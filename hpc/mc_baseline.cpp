@@ -41,8 +41,8 @@ int main() {
     std::cout << "Analytical NPV: " << analytic << std::endl;
     std::cout << "paths MC price stderr |diff|/stderr seconds" << std::endl;
 
-    for (Size n : {1000, 10000, 100000, 1000000}) {
-        option.setPricingEngine(MakeMCEuropeanEngine<PseudoRandom>(process).withSteps(1).withSamples(n).withSeed(1000)); //seed kinda fixed things
+    for (Size n : {1000, 10000, 100000/*, 1000000*/}) {
+        option.setPricingEngine(MakeMCEuropeanEngine<PseudoRandom>(process).withSteps(n).withSamples(n).withSeed(1000)); //seed to keep the values static.
         auto start = std::chrono::high_resolution_clock::now();
         Real mc = option.NPV();
         auto end = std::chrono::high_resolution_clock::now();
@@ -50,33 +50,5 @@ int main() {
         Real stderr = option.errorEstimate();
         Real diff = std::fabs(mc - analytic);
         std::cout << n << " " << mc << " " << stderr << " " << diff / stderr << " " << elapsed.count() << std::endl;
-    }
-
-    std::cout << std::endl;
-
-    //american exercise: no closed form, use a binomial tree as the reference price instead
-    auto americanExercise = ext::make_shared<AmericanExercise>(today, maturity);
-    VanillaOption americanOption(payoff, americanExercise);
-
-    americanOption.setPricingEngine(ext::make_shared<BinomialVanillaEngine<CoxRossRubinstein>>(process, 801));
-    Real binomial = americanOption.NPV();
-
-    std::cout << "Binomial (CRR, 801 steps) American NPV: " << binomial << std::endl;
-    std::cout << "paths MC price stderr |diff|/stderr seconds" << std::endl;
-
-    for (Size n : {1000, 10000, 100000, 1000000}) {
-        americanOption.setPricingEngine(MakeMCAmericanEngine<PseudoRandom>(process)
-                                             .withSteps(50)
-                                             .withPolynomialOrder(2)
-                                             .withSamples(n)
-                                             .withSeed(1000));
-        auto start = std::chrono::high_resolution_clock::now();
-        Real mc = americanOption.NPV();
-        auto end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        Real stderrAmerican = americanOption.errorEstimate();
-        Real diff = std::fabs(mc - binomial);
-        std::cout << n << " " << mc << " " << stderrAmerican << " " << diff / stderrAmerican << " "
-                   << elapsed.count() << std::endl;
     }
 }
